@@ -1,18 +1,15 @@
--- [[ SELECTIVE FRUIT SNIPER ]] --
+-- [[ 2026 DEFINITIVE ELITE SNIPER ]] --
 
--- 1. The Whitelist (Only these will be picked up)
+-- 1. Updated 2026 Whitelist
 local TargetFruits = {
-    "Kitsune Fruit",
-    "Leopard Fruit",
-    "Dragon Fruit",
-    "Spirit Fruit",
-    "Control Fruit",
-    "Venom Fruit",
-    "Shadow Fruit",
-    "Dough Fruit",
-    "Mammoth Fruit",
-    "T-Rex Fruit",
-    "Gravity Fruit"
+    -- The New Kings
+    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger", "Eagle",
+    
+    -- Mythicals & Reworks
+    "Dough", "Spirit", "Control", "Venom", "Shadow", "Gravity", "Mammoth", "T-Rex",
+    
+    -- High-Value Legendaries
+    "Buddha", "Portal", "Blizzard", "Sound", "Lightning", "Pain",
 }
 
 -- Settings
@@ -22,13 +19,16 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
--- Function to check if fruit is in our Whitelist
-local function isMythical(name)
-    for _, mythicalName in pairs(TargetFruits) do
-        if name:find(mythicalName) then
+-- Logic to check if the fruit name matches our 2026 list
+local function isValuable(name)
+    local lowerName = name:lower()
+    for _, eliteName in pairs(TargetFruits) do
+        if lowerName:find(eliteName:lower()) then
             return true
         end
     end
+    -- Special check for "Dragon" to catch any variation
+    if lowerName:find("dragon") then return true end
     return false
 end
 
@@ -37,15 +37,15 @@ local function storeFruit(fruitName)
     local fruitObj = lp.Backpack:FindFirstChild(fruitName) or lp.Character:FindFirstChild(fruitName)
     if fruitObj then
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", fruitName, fruitObj)
-        print("!!! STORED MYTHICAL: " .. fruitName .. " !!!")
+        print("Successfully Stored: " .. fruitName)
     end
 end
 
--- Main Logic
+-- Main Hunt
 local function startHunt()
     if not game:IsLoaded() then game.Loaded:Wait() end
     
-    -- Auto Join Pirates if no team
+    -- Auto-Join Team
     if not lp.Team then
         pcall(function() 
             game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates") 
@@ -54,35 +54,43 @@ local function startHunt()
 
     local fruitFound = false
     
+    -- Workspace scan
     for _, v in pairs(game.Workspace:GetChildren()) do
-        if v:IsA("Tool") and v:FindFirstChild("Handle") then
-            if isMythical(v.Name) then
+        if v:IsA("Tool") and (v:FindFirstChild("Handle") or v.Name:find("Fruit")) then
+            if isValuable(v.Name) then
                 fruitFound = true
-                print("MYTHICAL SPOTTED: " .. v.Name)
+                print("2026 TARGET FOUND: " .. v.Name)
                 
-                -- Teleport/Tween
                 local root = lp.Character:WaitForChild("HumanoidRootPart")
-                local info = TweenInfo.new((root.Position - v.Handle.Position).Magnitude / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(root, info, {CFrame = v.Handle.CFrame})
+                local targetPos = v:FindFirstChild("Handle") and v.Handle.CFrame or v.PrimaryPart.CFrame
+                
+                local info = TweenInfo.new((root.Position - targetPos.Position).Magnitude / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(root, info, {CFrame = targetPos})
                 tween:Play()
                 tween.Completed:Wait()
                 
-                task.wait(1)
+                task.wait(1.5)
                 storeFruit(v.Name)
             else
-                print("Skipping common fruit: " .. v.Name)
+                print("Skipping non-elite: " .. v.Name)
             end
         end
     end
     
-    -- Hop to find mythicals elsewhere
+    -- Server Hopping
     task.wait(2)
+    print("Searching for fresh 2026 server...")
     
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    for _, server in pairs(servers.data) do
-        if server.playing < server.maxPlayers and server.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
-            break
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    end)
+
+    if success and servers then
+        for _, server in pairs(servers.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
+                break
+            end
         end
     end
 end
