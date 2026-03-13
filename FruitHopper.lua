@@ -1,82 +1,90 @@
--- [[ BLOX FRUIT SNIPER & HOPPER ]] --
+-- [[ SELECTIVE FRUIT SNIPER ]] --
 
-repeat task.wait() until game:IsLoaded()
-
--- Auto Join Team (Pirates)
-local function joinTeam()
-    local joinRemote = game:GetService("ReplicatedStorage").Remotes.CommF_
-    joinRemote:InvokeServer("SetTeam", "Pirates")
-end
-
--- Fallback if not joined
-if not game.Players.LocalPlayer.Team then
-    pcall(joinTeam)
-end
+-- 1. The Whitelist (Only these will be picked up)
+local TargetFruits = {
+    "Kitsune Fruit",
+    "Leopard Fruit",
+    "Dragon Fruit",
+    "Spirit Fruit",
+    "Control Fruit",
+    "Venom Fruit",
+    "Shadow Fruit",
+    "Dough Fruit",
+    "Mammoth Fruit",
+    "T-Rex Fruit",
+    "Gravity Fruit"
+}
 
 -- Settings
-getgenv().TweenSpeed = 300 -- Safe speed for mobile executors
+getgenv().TweenSpeed = 220
 local lp = game.Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
--- 1. Auto-Store Logic
+-- Function to check if fruit is in our Whitelist
+local function isMythical(name)
+    for _, mythicalName in pairs(TargetFruits) do
+        if name:find(mythicalName) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to store the fruit
 local function storeFruit(fruitName)
     local fruitObj = lp.Backpack:FindFirstChild(fruitName) or lp.Character:FindFirstChild(fruitName)
     if fruitObj then
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", fruitName, fruitObj)
-        print("Successfully Stored: " .. fruitName)
+        print("!!! STORED MYTHICAL: " .. fruitName .. " !!!")
     end
 end
 
--- 2. Smooth Movement (Anti-Kick)
-local function teleport(targetCFrame)
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart")
-    local distance = (root.Position - targetCFrame.Position).Magnitude
-    local info = TweenInfo.new(distance / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
+-- Main Logic
+local function startHunt()
+    if not game:IsLoaded() then game.Loaded:Wait() end
     
-    local tween = TweenService:Create(root, info, {CFrame = targetCFrame})
-    tween:Play()
-    tween.Completed:Wait()
-end
+    -- Auto Join Pirates if no team
+    if not lp.Team then
+        pcall(function() 
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates") 
+        end)
+    end
 
--- 3. Server Hopper
-local function serverHop()
-    print("Finding new server...")
-    local placeId = game.PlaceId
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    local fruitFound = false
     
+    for _, v in pairs(game.Workspace:GetChildren()) do
+        if v:IsA("Tool") and v:FindFirstChild("Handle") then
+            if isMythical(v.Name) then
+                fruitFound = true
+                print("MYTHICAL SPOTTED: " .. v.Name)
+                
+                -- Teleport/Tween
+                local root = lp.Character:WaitForChild("HumanoidRootPart")
+                local info = TweenInfo.new((root.Position - v.Handle.Position).Magnitude / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(root, info, {CFrame = v.Handle.CFrame})
+                tween:Play()
+                tween.Completed:Wait()
+                
+                task.wait(1)
+                storeFruit(v.Name)
+            else
+                print("Skipping common fruit: " .. v.Name)
+            end
+        end
+    end
+    
+    -- Hop to find mythicals elsewhere
+    task.wait(2)
+    
+    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
     for _, server in pairs(servers.data) do
         if server.playing < server.maxPlayers and server.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(placeId, server.id, lp)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
             break
         end
     end
 end
 
--- 4. Main Loop
-local function startHunt()
-    local fruitFound = false
-    
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        if v:IsA("Tool") and (v.Name:find("Fruit") or v:FindFirstChild("Handle")) then
-            fruitFound = true
-            print("Fruit Spotted: " .. v.Name)
-            teleport(v.Handle.CFrame)
-            
-            task.wait(1) -- Wait for pickup
-            storeFruit(v.Name)
-        end
-    end
-    
-    if not fruitFound then
-        print("No fruits found. Hopping in 3 seconds...")
-        task.wait(3)
-    end
-    
-    serverHop()
-end
-
--- RUN
 startHunt()
