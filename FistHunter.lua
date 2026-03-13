@@ -1,55 +1,58 @@
--- [[ AGGRESSIVE DELTA FIST HUNTER 2026 ]] --
+-- [[ 2026 UNIFIED FIST HUNTER & SERVER AGED HOPPER ]] --
 
 local lp = game:GetService("Players").LocalPlayer
-local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 
-_G.CollectSpeed = 200 -- Slower for Delta stability
-_G.AutoHop = true
+_G.CollectSpeed = 280
+_G.TargetAge = 4 -- Hours
 
--- Optimized chest finder that scans deep folders
-local function getChests()
+local function getServerAge()
+    return workspace.DistributedGameTime / 3600
+end
+
+local function hop()
+    print("Finding a new potential 4H+ server...")
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
+    end)
+    
+    if success and servers then
+        for _, s in pairs(servers.data) do
+            -- Target servers with 6-9 players (statistically older)
+            if s.playing >= 6 and s.playing <= 9 and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, lp)
+                break
+            end
+        end
+    end
+end
+
+local function sweep()
+    print("Server Age: " .. string.format("%.2f", getServerAge()) .. " hours.")
+    
     local chests = {}
-    -- Scan everything in Workspace (including folders)
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if v:IsA("TouchTransmitter") and v.Parent and v.Parent.Name:find("Chest") then
             table.insert(chests, v.Parent)
         end
     end
-    return chests
-end
 
-local function deltaTween(targetCF)
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart")
-    local dist = (root.Position - targetCF.Position).Magnitude
-    local info = TweenInfo.new(dist / _G.CollectSpeed, Enum.EasingStyle.Linear)
-    
-    local tween = TweenService:Create(root, info, {CFrame = targetCF})
-    tween:Play()
-    tween.Completed:Wait()
-end
-
-local function startSweep()
-    print("Delta: Scanning map for chests...")
-    local chests = getChests()
-    
-    if #chests == 0 then
-        print("Delta Error: No chests found in workspace. Try moving islands.")
-        return false
-    end
-    
-    print("Delta: Found " .. #chests .. " chests. Starting sweep...")
-    
     for _, chest in ipairs(chests) do
-        -- Skip chests that are already opened (Transparency 1)
         if chest:IsA("BasePart") and chest.Transparency < 1 then
-            deltaTween(chest.CFrame)
-            task.wait(0.5) -- Buffed for Delta touch registration
+            local char = lp.Character or lp.CharacterAdded:Wait()
+            local root = char:WaitForChild("HumanoidRootPart")
+            local dist = (root.Position - chest.Position).Magnitude
             
-            if lp.Backpack:FindFirstChild("Fist of Darkness") or lp.Character:FindFirstChild("Fist of Darkness") then
-                print("!!! SUCCESS: FIST OBTAINED !!!")
-                lp.Character.HumanoidRootPart.CFrame = CFrame.new(0, 1500, 0)
+            local tween = TweenService:Create(root, TweenInfo.new(dist / _G.CollectSpeed, Enum.EasingStyle.Linear), {CFrame = chest.CFrame})
+            tween:Play()
+            tween.Completed:Wait()
+            task.wait(0.4) -- Delta-safe delay
+            
+            if lp.Backpack:FindFirstChild("Fist of Darkness") or char:FindFirstChild("Fist of Darkness") then
+                print("!!! FIST OF DARKNESS SECURED !!!")
+                root.CFrame = CFrame.new(root.Position.X, 2000, root.Position.Z)
                 return true
             end
         end
@@ -57,20 +60,18 @@ local function startSweep()
     return false
 end
 
-local function hop()
-    print("No Fist found. Hopping...")
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
-    for _, s in pairs(servers.data) do
-        if s.playing < 12 and s.id ~= game.JobId then
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, s.id, lp)
-            break
-        end
+-- Main Logic
+local age = getServerAge()
+if age >= _G.TargetAge then
+    print("Server is old enough! Checking chests...")
+    local found = sweep()
+    if not found then
+        print("Chest sweep failed. Someone likely took it. Hopping...")
+        task.wait(2)
+        hop()
     end
-end
-
--- Run
-local found = startSweep()
-if not found and _G.AutoHop then
+else
+    print("Server is too new (" .. string.format("%.2f", age) .. "h). Hopping...")
     task.wait(2)
     hop()
 end
