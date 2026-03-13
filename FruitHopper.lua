@@ -14,7 +14,7 @@ if not game.Players.LocalPlayer.Team then
 end
 
 -- Settings
-getgenv().TweenSpeed = 200 -- Safe speed for mobile executors
+getgenv().TweenSpeed = 300 -- Safe speed for mobile executors
 local lp = game.Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
