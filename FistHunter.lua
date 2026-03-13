@@ -1,18 +1,19 @@
--- [[ DELTA OPTIMIZED FIST HUNTER 2026 ]] --
+-- [[ AGGRESSIVE DELTA FIST HUNTER 2026 ]] --
 
 local lp = game:GetService("Players").LocalPlayer
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
--- Configuration
-_G.CollectSpeed = 250 -- Lowered for Delta stability
+_G.CollectSpeed = 200 -- Slower for Delta stability
 _G.AutoHop = true
 
+-- Optimized chest finder that scans deep folders
 local function getChests()
     local chests = {}
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        if v.Name:find("Chest") and v:IsA("BasePart") then
-            table.insert(chests, v)
+    -- Scan everything in Workspace (including folders)
+    for _, v in pairs(game.Workspace:GetDescendants()) do
+        if v:IsA("TouchTransmitter") and v.Parent and v.Parent.Name:find("Chest") then
+            table.insert(chests, v.Parent)
         end
     end
     return chests
@@ -26,29 +27,29 @@ local function deltaTween(targetCF)
     
     local tween = TweenService:Create(root, info, {CFrame = targetCF})
     tween:Play()
-    
-    -- Delta Safety: Wait for tween or manual break
-    local reached = false
-    tween.Completed:Connect(function() reached = true end)
-    
-    repeat task.wait() until reached or (root.Position - targetCF.Position).Magnitude < 10
+    tween.Completed:Wait()
 end
 
 local function startSweep()
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart")
+    print("Delta: Scanning map for chests...")
     local chests = getChests()
     
-    print("Delta: Checking " .. #chests .. " chests...")
+    if #chests == 0 then
+        print("Delta Error: No chests found in workspace. Try moving islands.")
+        return false
+    end
     
-    for i, chest in ipairs(chests) do
-        if chest.Transparency < 1 then
+    print("Delta: Found " .. #chests .. " chests. Starting sweep...")
+    
+    for _, chest in ipairs(chests) do
+        -- Skip chests that are already opened (Transparency 1)
+        if chest:IsA("BasePart") and chest.Transparency < 1 then
             deltaTween(chest.CFrame)
-            task.wait(0.3) -- Essential for Delta to register touch
+            task.wait(0.5) -- Buffed for Delta touch registration
             
-            if lp.Backpack:FindFirstChild("Fist of Darkness") or char:FindFirstChild("Fist of Darkness") then
-                print("!!! FIST FOUND !!!")
-                root.CFrame = CFrame.new(root.Position.X, 1500, root.Position.Z)
+            if lp.Backpack:FindFirstChild("Fist of Darkness") or lp.Character:FindFirstChild("Fist of Darkness") then
+                print("!!! SUCCESS: FIST OBTAINED !!!")
+                lp.Character.HumanoidRootPart.CFrame = CFrame.new(0, 1500, 0)
                 return true
             end
         end
@@ -56,9 +57,8 @@ local function startSweep()
     return false
 end
 
--- Delta Manual Hop
 local function hop()
-    print("Hopping to new server...")
+    print("No Fist found. Hopping...")
     local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
     for _, s in pairs(servers.data) do
         if s.playing < 12 and s.id ~= game.JobId then
