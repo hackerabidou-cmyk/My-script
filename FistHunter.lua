@@ -1,61 +1,45 @@
--- [[ 2026 FIST OF DARKNESS & 4H+ HOPPER ]] --
+-- [[ 2026 DELITE/DELTA COMPATIBLE FIST HUNTER ]] --
 
-local lp = game.Players.LocalPlayer
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+-- Delta-Safe Variables
+local lp = game:GetService("Players").LocalPlayer
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
--- Configuration
-getgenv().CollectSpeed = 350
+getgenv().Speed = 300
 
-local function getServerAge()
-    local uptime = workspace.DistributedGameTime
-    return math.floor(uptime / 3600) -- Returns hours
-end
-
-local function hopToOldServer()
-    print("Looking for an established server...")
-    local success, servers = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
-    end)
-    
-    if success and servers then
-        for _, s in pairs(servers.data) do
-            if s.playing >= 7 and s.playing <= 10 and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, lp)
-                break
-            end
-        end
-    end
-end
-
-local function sweepChests()
-    if game.PlaceId ~= 4442245221 then -- Second Sea ID
-        warn("You must be in the Second Sea to find the Fist of Darkness!")
-        return
-    end
-
+-- Function to safely teleport on Delta
+local function deltaTween(targetCFrame)
     local char = lp.Character or lp.CharacterAdded:Wait()
     local root = char:WaitForChild("HumanoidRootPart")
+    local dist = (root.Position - targetCFrame.Position).Magnitude
+    local info = TweenInfo.new(dist / getgenv().Speed, Enum.EasingStyle.Linear)
     
-    local chests = {}
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        if v.Name:find("Chest") and v:IsA("Part") then table.insert(chests, v) end
-    end
+    local tween = TweenService:Create(root, info, {CFrame = targetCFrame})
+    tween:Play()
+    tween.Completed:Wait()
+end
 
-    print("Checking " .. #chests .. " chests in this " .. getServerAge() .. "h server...")
+-- Function to grab chests
+local function collectChests()
+    print("Delta: Starting Chest Sweep...")
+    local chests = {}
+    
+    for _, v in pairs(game.Workspace:GetChildren()) do
+        if v.Name:find("Chest") and v:IsA("Part") then
+            table.insert(chests, v)
+        end
+    end
 
     for _, chest in ipairs(chests) do
         if chest.Transparency < 1 then
-            local dist = (root.Position - chest.Position).Magnitude
-            local tween = TweenService:Create(root, TweenInfo.new(dist/getgenv().CollectSpeed, Enum.EasingStyle.Linear), {CFrame = chest.CFrame})
-            tween:Play()
-            tween.Completed:Wait()
-            task.wait(0.2)
+            deltaTween(chest.CFrame)
+            task.wait(0.2) -- Extra time for Delta to register the 'Touch'
             
-            if lp.Backpack:FindFirstChild("Fist of Darkness") or char:FindFirstChild("Fist of Darkness") then
-                print("!!! FIST FOUND !!! FLYING TO SAFETY !!!")
-                root.CFrame = CFrame.new(root.Position.X, 2000, root.Position.Z)
+            if lp.Backpack:FindFirstChild("Fist of Darkness") or lp.Character:FindFirstChild("Fist of Darkness") then
+                print("FIST FOUND!")
+                -- Delta Safety: Fly high immediately
+                lp.Character.HumanoidRootPart.CFrame = CFrame.new(0, 2000, 0)
                 return true
             end
         end
@@ -63,9 +47,8 @@ local function sweepChests()
     return false
 end
 
--- Start Logic
-if not sweepChests() then
-    print("No Fist here. Hopping...")
-    task.wait(1)
-    hopToOldServer()
+-- Delta Execute
+local success = collectChests()
+if not success then
+    print("No Fist. Delta is ready for manual hop.")
 end
