@@ -2,16 +2,15 @@
 
 -- 1. THE COMPLETE 2026 FRUIT LIST
 local TargetFruits = {
-    -- The "Kings" & New Reworks
-    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger", "Eagle", "Yeti",
+
     -- Mythicals
-    "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex", "Venom", "Shadow",
+    "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex", "Venom", "Shadow", "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger", "Yeti",
     -- Legendaries
-    "Buddha", "Portal", "Blizzard", "Lightning", "Pain", "Sound", "Rumble", "Phoenix", "Spider", "Love", "Quake",
+    "Buddha", "Portal", "Blizzard", "Lightning", "Pain", "Sound", "Rumble", "Phoenix", "Spider", "Love", "Quake","Creation"
     -- Rares & Uncommons
-    "Magma", "Ghost", "Barrier", "Rubber", "Light", "Diamond", "Dark", "Sand", "Ice", "Falcon", "Flame",
+    "Magma", "Ghost", "Rubber", "Light", "Diamond", "Dark", "Sand", "Ice", "Flame", "Eagle",
     -- Commons
-    "Spike", "Smoke", "Bomb", "Spring", "Chop", "Spin", "Rocket", "Blade", "Creation"
+    "Spike", "Smoke", "Bomb", "Spring", "Spin", "Rocket", "Blade", 
 }
 
 -- Settings
