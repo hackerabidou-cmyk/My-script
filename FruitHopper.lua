@@ -1,13 +1,17 @@
--- [[ 2026 ELITE SNIPER - SERVER AGE EDITION ]] --
+-- [[ 2026 ALL-FRUIT SNIPER & SMART HOPPER ]] --
 
--- 1. YOUR SPECIFIC FRUIT LIST
+-- 1. THE COMPLETE 2026 FRUIT LIST
 local TargetFruits = {
-    -- The New Kings
-    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger",
-    -- Mythicals & Reworks
-    "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex",
-    -- High-Value Legendaries
-    "Buddha", "Portal", "Blizzard", "Lightning", "Pain"
+    -- The "Kings" & New Reworks
+    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger", "Eagle", "Yeti",
+    -- Mythicals
+    "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex", "Venom", "Shadow",
+    -- Legendaries
+    "Buddha", "Portal", "Blizzard", "Lightning", "Pain", "Sound", "Rumble", "Phoenix", "Spider", "Love", "Quake",
+    -- Rares & Uncommons
+    "Magma", "Ghost", "Barrier", "Rubber", "Light", "Diamond", "Dark", "Sand", "Ice", "Falcon", "Flame",
+    -- Commons
+    "Spike", "Smoke", "Bomb", "Spring", "Chop", "Spin", "Rocket", "Blade", "Creation"
 }
 
 -- Settings
@@ -18,10 +22,10 @@ local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
 -- Fuzzy Search Logic
-local function isValuable(name)
+local function isAnyFruit(name)
     local lowerName = name:lower()
-    for _, eliteName in pairs(TargetFruits) do
-        if lowerName:find(eliteName:lower()) then
+    for _, fruitName in pairs(TargetFruits) do
+        if lowerName:find(fruitName:lower()) or lowerName:find("fruit") then
             return true
         end
     end
@@ -33,21 +37,21 @@ local function storeFruit(fruitName)
     local fruitObj = lp.Backpack:FindFirstChild(fruitName) or lp.Character:FindFirstChild(fruitName)
     if fruitObj then
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", fruitName, fruitObj)
-        print("!!! SECURED: " .. fruitName .. " !!!")
+        print("!!! STORED: " .. fruitName .. " !!!")
     end
 end
 
--- SMART SERVER HOPPER (Prioritizes 60min+ Servers)
+-- Smart Server Hopper (Age Filter)
 local function smartHop()
     print("Finding a high-probability server...")
     local success, servers = pcall(function()
+        -- Fetching standard public servers
         return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
     end)
 
     if success and servers then
-        -- Try to find an older server first
         for _, server in pairs(servers.data) do
-            -- Look for servers with decent player counts but not full
+            -- Prioritize servers that aren't full and aren't our current one
             if server.playing < server.maxPlayers and server.id ~= game.JobId then
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
                 break
@@ -67,18 +71,20 @@ local function startHunt()
         end)
     end
 
-    task.wait(1) -- Brief pause for workspace to load
+    task.wait(1.5) -- Wait for assets to load
     
     local fruitFound = false
     for _, v in pairs(game.Workspace:GetChildren()) do
+        -- Detects any tool with a handle or "Fruit" in the name
         if v:IsA("Tool") and (v:FindFirstChild("Handle") or v.Name:find("Fruit")) then
-            if isValuable(v.Name) then
+            if isAnyFruit(v.Name) then
                 fruitFound = true
-                print("TARGET FOUND: " .. v.Name)
+                print("FRUIT SPOTTED: " .. v.Name)
                 
                 local root = lp.Character:WaitForChild("HumanoidRootPart")
                 local targetPos = v:FindFirstChild("Handle") and v.Handle.CFrame or v.PrimaryPart.CFrame
                 
+                -- Smooth Fly
                 local info = TweenInfo.new((root.Position - targetPos.Position).Magnitude / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
                 local tween = TweenService:Create(root, info, {CFrame = targetPos})
                 tween:Play()
@@ -91,11 +97,12 @@ local function startHunt()
     end
     
     if not fruitFound then
-        print("No elite fruits here. Moving on...")
+        print("No fruit in this server. Hopping...")
     end
     
     task.wait(1)
     smartHop()
 end
 
+-- Start
 startHunt()
