@@ -1,15 +1,13 @@
--- [[ 2026 DEFINITIVE ELITE SNIPER ]] --
+-- [[ 2026 ELITE SNIPER - SERVER AGE EDITION ]] --
 
--- 1. Updated 2026 Whitelist
+-- 1. YOUR SPECIFIC FRUIT LIST
 local TargetFruits = {
     -- The New Kings
     "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger",
-    
     -- Mythicals & Reworks
     "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex",
-    
     -- High-Value Legendaries
-    "Buddha", "Portal", "Blizzard", "Lightning", "Pain",
+    "Buddha", "Portal", "Blizzard", "Lightning", "Pain"
 }
 
 -- Settings
@@ -19,7 +17,7 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
--- Logic to check if the fruit name matches our 2026 list
+-- Fuzzy Search Logic
 local function isValuable(name)
     local lowerName = name:lower()
     for _, eliteName in pairs(TargetFruits) do
@@ -27,39 +25,56 @@ local function isValuable(name)
             return true
         end
     end
-    -- Special check for "Dragon" to catch any variation
-    if lowerName:find("dragon") then return true end
     return false
 end
 
--- Function to store the fruit
+-- Store Function
 local function storeFruit(fruitName)
     local fruitObj = lp.Backpack:FindFirstChild(fruitName) or lp.Character:FindFirstChild(fruitName)
     if fruitObj then
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", fruitName, fruitObj)
-        print("Successfully Stored: " .. fruitName)
+        print("!!! SECURED: " .. fruitName .. " !!!")
     end
 end
 
--- Main Hunt
+-- SMART SERVER HOPPER (Prioritizes 60min+ Servers)
+local function smartHop()
+    print("Finding a high-probability server...")
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    end)
+
+    if success and servers then
+        -- Try to find an older server first
+        for _, server in pairs(servers.data) do
+            -- Look for servers with decent player counts but not full
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
+                break
+            end
+        end
+    end
+end
+
+-- Main Loop
 local function startHunt()
     if not game:IsLoaded() then game.Loaded:Wait() end
     
-    -- Auto-Join Team
+    -- Auto Join Team
     if not lp.Team then
         pcall(function() 
             game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates") 
         end)
     end
 
-    local fruitFound = false
+    task.wait(1) -- Brief pause for workspace to load
     
-    -- Workspace scan
+    local fruitFound = false
     for _, v in pairs(game.Workspace:GetChildren()) do
         if v:IsA("Tool") and (v:FindFirstChild("Handle") or v.Name:find("Fruit")) then
             if isValuable(v.Name) then
                 fruitFound = true
-                print("2026 TARGET FOUND: " .. v.Name)
+                print("TARGET FOUND: " .. v.Name)
                 
                 local root = lp.Character:WaitForChild("HumanoidRootPart")
                 local targetPos = v:FindFirstChild("Handle") and v.Handle.CFrame or v.PrimaryPart.CFrame
@@ -71,28 +86,16 @@ local function startHunt()
                 
                 task.wait(1.5)
                 storeFruit(v.Name)
-            else
-                print("Skipping non-elite: " .. v.Name)
             end
         end
     end
     
-    -- Server Hopping
-    task.wait(2)
-    print("Searching for fresh 2026 server...")
-    
-    local success, servers = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-
-    if success and servers then
-        for _, server in pairs(servers.data) do
-            if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, lp)
-                break
-            end
-        end
+    if not fruitFound then
+        print("No elite fruits here. Moving on...")
     end
+    
+    task.wait(1)
+    smartHop()
 end
 
 startHunt()
