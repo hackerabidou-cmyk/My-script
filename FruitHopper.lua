@@ -3,13 +3,13 @@
 -- 1. Updated 2026 Whitelist
 local TargetFruits = {
     -- The New Kings
-    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger", "Eagle",
+    "Dragon East", "Dragon West", "Kitsune", "Gas", "Yeti", "Tiger",
     
     -- Mythicals & Reworks
-    "Dough", "Spirit", "Control", "Venom", "Shadow", "Gravity", "Mammoth", "T-Rex",
+    "Dough", "Spirit", "Control", "Gravity", "Mammoth", "T-Rex",
     
     -- High-Value Legendaries
-    "Buddha", "Portal", "Blizzard", "Sound", "Lightning", "Pain",
+    "Buddha", "Portal", "Blizzard", "Lightning", "Pain",
 }
 
 -- Settings
