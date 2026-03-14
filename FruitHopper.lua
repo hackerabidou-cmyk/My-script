@@ -1,54 +1,75 @@
+-- [[ Blox Fruits Auto-Fruit Sniper & Server Hopper ]] --
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local Player = game.Players.LocalPlayer
 
--- Function to Server Hop
-local function serverHop()
-    local x = {}
-    for _, v in ipairs(HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")).data) do
-        if v.playing < v.maxPlayers and v.id ~= game.JobId then
-            x[#x + 1] = v.id
-        end
-    end
-    if #x > 0 then
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)])
-    else
-        warn("No servers found, retrying...")
-        wait(1)
-        serverHop()
-    end
+-- Configuration
+_G.TweenSpeed = 100 -- Adjust speed (Lower = Slower/Safer)
+
+-- Function to safely move to the fruit
+local function tweenTo(targetCFrame)
+    if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local distance = (Player.Character.HumanoidRootPart.Position - targetCFrame.p).Magnitude
+    local info = TweenInfo.new(distance / _G.TweenSpeed, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(Player.Character.HumanoidRootPart, info, {CFrame = targetCFrame})
+    
+    tween:Play()
+    tween.Completed:Wait()
 end
 
--- Function to Find and Teleport to Fruit
-local function findFruit()
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        -- Blox Fruits typically names spawned fruits "Fruit " or includes "Fruit" in the model name
-        if v:IsA("Model") and (string.find(v.name, "Fruit") or v:FindFirstChild("Handle")) then
-            print("Fruit found: " .. v.name)
-            local target = v:FindFirstChild("Handle") or v.PrimaryPart
-            
-            if target then
-                -- Teleporting
-                Player.Character.HumanoidRootPart.CFrame = target.CFrame
-                wait(1) -- Wait to ensure it's picked up
-                return true
+-- Function to find a new server
+local function serverHop()
+    print("Finding new server...")
+    local sfUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(sfUrl))
+    end)
+    
+    if success and result.data then
+        for _, server in ipairs(result.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id)
+                return
             end
         end
     end
-    return false
+    warn("No servers found, retrying in 3 seconds...")
+    task.wait(3)
+    serverHop()
 end
 
--- Main Execution
-repeat wait() until game:IsLoaded()
+-- Function to search for fruits
+local function checkFruits()
+    for _, v in pairs(game.Workspace:GetChildren()) do
+        -- Blox Fruits usually names them "Fruit " or they have a "Handle"
+        if v:IsA("Tool") and (string.find(v.name, "Fruit") or v:FindFirstChild("Handle")) then
+            return v
+        elseif v:IsA("Model") and string.find(v.name, "Fruit") then
+             return v
+        end
+    end
+    return nil
+end
 
-local fruitFound = findFruit()
+-- Main Loop
+local foundFruit = checkFruits()
 
-if fruitFound then
-    print("Fruit secured. Hopping in 5 seconds...")
-    wait(5)
+if foundFruit then
+    print("Fruit Detected: " .. foundFruit.name)
+    local target = foundFruit:FindFirstChild("Handle") or foundFruit:FindFirstChildWhichIsA("BasePart")
+    
+    if target then
+        tweenTo(target.CFrame)
+        task.wait(1) -- Time to pick up
+    end
+    print("Hopping after find...")
     serverHop()
 else
-    print("No fruit in this server. Hopping now...")
+    print("No fruit in this server. Hopping...")
     serverHop()
 end
