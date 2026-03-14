@@ -1,76 +1,54 @@
--- SERVICES
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local Player = game.Players.LocalPlayer
 
--- CONFIGURATION: Your Specific List
-local WantedFruits = {
-    ["Dragon East"] = true, ["Dragon West"] = true,
-    ["Kitsune"] = true,     ["Yeti"] = true,
-    ["Control"] = true,     ["Gas"] = true,
-    ["Dough"] = true,       ["T-Rex"] = true,
-    ["Lightning"] = true,   ["Blizzard"] = true,
-    ["Pain"] = true,        ["Buddha"] = true,
-    ["Portal"] = true
-}
-
-local LocalPlayer = Players.LocalPlayer
-
--- FUNCTION: Smooth Movement (Anti-Cheat Bypass)
-local function travelTo(targetCFrame)
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local root = character:WaitForChild("HumanoidRootPart")
-    local distance = (root.Position - targetCFrame.Position).Magnitude
-    local info = TweenInfo.new(distance / 300, Enum.EasingStyle.Linear) -- Constant speed
-    
-    local tween = TweenService:Create(root, info, {CFrame = targetCFrame})
-    tween:Play()
-    tween.Completed:Wait()
+-- Function to Server Hop
+local function serverHop()
+    local x = {}
+    for _, v in ipairs(HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")).data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            x[#x + 1] = v.id
+        end
+    end
+    if #x > 0 then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)])
+    else
+        warn("No servers found, retrying...")
+        wait(1)
+        serverHop()
+    end
 end
 
--- FUNCTION: Store the Fruit
-local function storeFruit(fruitTool)
-    -- This fires the game's internal 'Store' command
-    -- Path: ReplicatedStorage -> Remotes -> CommF_
-    local storeRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
-    storeRemote:InvokeServer("StoreFruit", fruitTool.Name, fruitTool)
-end
-
--- MAIN LOGIC
-local function scanAndCollect()
-    for _, item in pairs(game.Workspace:GetChildren()) do
-        -- Check if it's a Fruit Tool or a Fruit Model with a Handle
-        if item:IsA("Tool") and (item.Name:find("Fruit") or item:FindFirstChild("Handle")) then
-            local cleanName = item.Name:gsub(" Fruit", "")
+-- Function to Find and Teleport to Fruit
+local function findFruit()
+    for _, v in pairs(game.Workspace:GetChildren()) do
+        -- Blox Fruits typically names spawned fruits "Fruit " or includes "Fruit" in the model name
+        if v:IsA("Model") and (string.find(v.name, "Fruit") or v:FindFirstChild("Handle")) then
+            print("Fruit found: " .. v.name)
+            local target = v:FindFirstChild("Handle") or v.PrimaryPart
             
-            if WantedFruits[cleanName] then
-                print("Target Located: " .. cleanName)
-                travelTo(item.Handle.CFrame)
-                task.wait(0.5) -- Small delay to ensure pickup
-                storeFruit(item)
-                task.wait(1)
+            if target then
+                -- Teleporting
+                Player.Character.HumanoidRootPart.CFrame = target.CFrame
+                wait(1) -- Wait to ensure it's picked up
+                return true
             end
         end
     end
+    return false
 end
 
--- SERVER HOPPER
-local function serverHop()
-    print("No fruits found. Hopping to a new server...")
-    local PlaceId = game.PlaceId
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data
-    
-    for _, server in pairs(servers) do
-        if server.playing < server.maxPlayers and server.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(PlaceId, server.id)
-            break
-        end
-    end
-end
+-- Main Execution
+repeat wait() until game:IsLoaded()
 
--- EXECUTION
-scanAndCollect()
-task.wait(2)
-serverHop()
+local fruitFound = findFruit()
+
+if fruitFound then
+    print("Fruit secured. Hopping in 5 seconds...")
+    wait(5)
+    serverHop()
+else
+    print("No fruit in this server. Hopping now...")
+    serverHop()
+end
