@@ -4,13 +4,18 @@ local Window = Rayfield:CreateWindow({
    Name = "🌊 Fist Hunter Hub | Akuma Edition",
    LoadingTitle = "Initializing Akuma Systems...",
    LoadingSubtitle = "by hackerabidou-cmyk",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "AkumaHub",
+      FileName = "FistHunter"
+   },
    KeySystem = false
 })
 
 -- [[ GLOBAL SETTINGS ]] --
 _G.TweenSpeed = 100
 _G.AutoAttack = false
-_G.SelectedWeapon = "Melee" -- Default
+_G.SelectedWeapon = "Melee" 
 _G.Skills = {Z = true, X = true, C = true, V = true}
 
 local Player = game.Players.LocalPlayer
@@ -18,6 +23,16 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- [[ HELPER FUNCTIONS ]] --
+local function getBoat()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        local seat = Player.Character.Humanoid.SeatPart
+        if seat and seat:IsA("VehicleSeat") then
+            return seat.Parent
+        end
+    end
+    return nil
+end
+
 local function equipWeapon()
     local tool = Player.Backpack:FindFirstChild(_G.SelectedWeapon) or Character:FindFirstChild(_G.SelectedWeapon)
     if tool then
@@ -26,7 +41,6 @@ local function equipWeapon()
 end
 
 local function useSkills()
-    if not _G.AutoAttack then return end
     local VirtualInputManager = game:GetService("VirtualInputManager")
     for skill, enabled in pairs(_G.Skills) do
         if enabled then
@@ -44,7 +58,7 @@ local MiscTab = Window:CreateTab("Movement & Misc", 4483362458)
 
 -- [[ MOVEMENT & TWEEN SPEED ]] --
 MiscTab:CreateSlider({
-   Name = "Tween Speed",
+   Name = "Movement Speed",
    Range = {50, 500},
    Increment = 10,
    Suffix = "SPS",
@@ -53,19 +67,59 @@ MiscTab:CreateSlider({
    Callback = function(Value) _G.TweenSpeed = Value end,
 })
 
--- [[ SEA BEAST LOGIC ]] --
+-- [[ SEA EVENT LOGIC ]] --
 MainTab:CreateToggle({
-   Name = "Auto Sail (Forward Only)",
+   Name = "Auto Sail (Universal Forward)",
    CurrentValue = false,
    Callback = function(Value)
       _G.NormalSail = Value
-      spawn(function()
+      task.spawn(function()
           while _G.NormalSail do
-              local boat = workspace.Boats:FindFirstChild(Player.Name .. "Boat") or workspace.Boats:FindFirstChildWhichIsA("Model")
-              if boat and boat:FindFirstChild("VehicleSeat") then
-                  boat.VehicleSeat.LinearVelocity = boat.VehicleSeat.CFrame.LookVector * _G.TweenSpeed
+              local boat = getBoat()
+              if boat then
+                  local speed = _G.TweenSpeed / 50
+                  boat:SetPrimaryPartCFrame(boat:GetPrimaryPartCFrame() * CFrame.new(0, 0, -speed))
+              else
+                  _G.NormalSail = false
+                  Rayfield:Notify({Title = "Akuma Hub", Content = "Please sit in driver's seat!", Duration = 2})
+                  break
               end
-              task.wait(0.1)
+              task.wait()
+          end
+      end)
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Auto Sail (Universal Square)",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.SquareSail = Value
+      task.spawn(function()
+          local points = {
+              Vector3.new(1, 0, 0), 
+              Vector3.new(0, 0, 1), 
+              Vector3.new(-1, 0, 0), 
+              Vector3.new(0, 0, -1)
+          }
+          local currentPoint = 1
+          local timer = 0
+          while _G.SquareSail do
+              local boat = getBoat()
+              if boat then
+                  local speed = _G.TweenSpeed / 50
+                  boat:SetPrimaryPartCFrame(boat:GetPrimaryPartCFrame() * CFrame.new(points[currentPoint].X * speed, 0, points[currentPoint].Z * speed))
+                  
+                  timer = timer + 1
+                  if timer >= 500 then -- Change direction roughly every few seconds
+                      currentPoint = currentPoint % 4 + 1
+                      timer = 0
+                  end
+              else
+                  _G.SquareSail = false
+                  break
+              end
+              task.wait()
           end
       end)
    end,
@@ -76,13 +130,14 @@ MainTab:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoSB = Value
-      spawn(function()
+      task.spawn(function()
           while _G.AutoSB do
               local sb = workspace.Enemies:FindFirstChild("Sea Beast") or workspace:FindFirstChild("Sea Beast")
               if sb and sb:FindFirstChild("HumanoidRootPart") then
                   equipWeapon()
                   Root.CFrame = sb.HumanoidRootPart.CFrame * CFrame.new(0, 60, 0)
-                  -- Click Attack
+                  
+                  -- Attack logic
                   game:GetService("VirtualUser"):CaptureController()
                   game:GetService("VirtualUser"):Button1Down(Vector2.new(1280, 672))
                   useSkills()
@@ -95,11 +150,10 @@ MainTab:CreateToggle({
 
 -- [[ COMBAT CONFIG ]] --
 CombatTab:CreateDropdown({
-   Name = "Select Weapon Type",
+   Name = "Select Weapon Category",
    Options = {"Melee", "Sword", "Fruit"},
    CurrentOption = "Melee",
    Callback = function(Option)
-       -- Logic to find the actual item name in backpack
        for _, v in pairs(Player.Backpack:GetChildren()) do
            if v:IsA("Tool") and v.ToolTip == Option then
                _G.SelectedWeapon = v.name
@@ -108,7 +162,7 @@ CombatTab:CreateDropdown({
    end,
 })
 
-CombatTab:CreateSection("Skills to Use")
+CombatTab:CreateSection("Skills")
 for _, key in pairs({"Z", "X", "C", "V"}) do
     CombatTab:CreateToggle({
        Name = "Use " .. key .. " Skill",
@@ -122,7 +176,7 @@ CombatTab:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       _G.FastAttack = Value
-      spawn(function()
+      task.spawn(function()
           while _G.FastAttack do
               game:GetService("ReplicatedStorage").Remotes.Validator:FireServer("Attack")
               task.wait(0.05)
