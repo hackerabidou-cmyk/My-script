@@ -1,3 +1,12 @@
+-- [[ LagByeBye: Blox Fruits Visual Optimizer ]] --
+-- Targets: Dragon, Control, Gun Effects, and Textures
+print("LagByeBye Loaded Successfully!")
+
+-- Your optimization code starts here:
+local lighting = game:GetService("Lighting")
+lighting.GlobalShadows = false
+-- (The rest of your code...)
+
 -- Essential Service
 local workspace = game:GetService("Workspace")
 
