@@ -1,12 +1,8 @@
--- [[ LagByeBye v3: Surgical VFX Menu ]] --
+-- [[ LagByeBye v4: Pro PvP Menu + Minimize ]] --
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("LagByeBye: PvP Optimizer", "Midnight")
 
--- Tabs
-local Tab = Window:NewTab("Surgical VFX")
-local Section = Tab:NewSection("Disable Specific Lag")
-
--- Settings table to keep track of toggles
+-- SETTINGS
 _G.Settings = {
     NoDragon = false,
     NoKitsune = false,
@@ -14,59 +10,72 @@ _G.Settings = {
     NoGuns = false
 }
 
--- The Surgical Function (Only kills what we ask for)
-local function handleVFX(obj)
-    local name = obj.Name:lower()
-    local parentName = (obj.Parent and obj.Parent.Name:lower()) or ""
+-- [[ KEYBIND TO MINIMIZE ]] --
+-- Press "RightControl" to hide/show the menu
+Window:SetKeybind(Enum.KeyCode.RightControl)
 
-    -- 1. Dragon Logic
-    if _G.Settings.NoDragon and (name:find("dragon") or parentName:find("dragon") or name:find("firebreath")) then
+-- [[ MINIMIZE BUTTON (FOR MUMU USERS) ]] --
+local ScreenGui = Instance.new("ScreenGui")
+local OpenBtn = Instance.new("TextButton")
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+OpenBtn.Parent = ScreenGui
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 10, 0.5, 0)
+OpenBtn.Text = "LBB"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.Draggable = true -- You can move it around on MuMu
+OpenBtn.MouseButton1Click:Connect(function()
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+end)
+
+-- [[ THE SURGICAL BRAIN ]] --
+local function cleanVFX(obj)
+    local name = obj.Name:lower()
+    
+    -- 1. DRAGON
+    if _G.Settings.NoDragon and (name:find("dragon") or name:find("firebreath") or name:find("transform")) then
         if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then obj.Enabled = false end
     end
 
-    -- 2. Kitsune Logic
-    if _G.Settings.NoKitsune and (name:find("kitsune") or name:find("fox") or name:find("bluefire") or name:find("tail")) then
+    -- 2. KITSUNE
+    if _G.Settings.NoKitsune and (name:find("kitsune") or name:find("fox") or name:find("tail") or name:find("bluefire")) then
         if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then obj.Enabled = false end
     end
 
-    -- 3. Control Logic
-    if _G.Settings.NoControl and (name:find("control") or name:find("room") or name:find("gamma") or name:find("area")) then
-        if obj:IsA("ParticleEmitter") or obj:IsA("MeshPart") then 
-            -- We hide the 'Room' mesh specifically
-            if name:find("room") or name:find("area") then obj.Transparency = 1 end
-            if obj:IsA("ParticleEmitter") then obj.Enabled = false end
+    -- 3. CONTROL
+    if _G.Settings.NoControl and (name:find("control") or name:find("room") or name:find("area") or name:find("gamma")) then
+        if obj:IsA("ParticleEmitter") then obj.Enabled = false end
+        if name:find("room") or name:find("area") then obj.Transparency = 1 end
+    end
+
+    -- 4. ALL 14 GUNS (Total Wipeout)
+    -- This targets common projectile names used by all Blox Fruit guns
+    if _G.Settings.NoGuns then
+        local gunKeywords = {"bullet", "shot", "muzzle", "flash", "flare", "smoke", "blast", "beam", "guitar", "soul", "acid", "serpent", "bizarre", "cannon", "musket", "rifle", "flintlock"}
+        for _, word in pairs(gunKeywords) do
+            if name:find(word) then
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                    obj.Enabled = false
+                end
+            end
         end
-    end
-
-    -- 4. Gun Logic
-    if _G.Settings.NoGuns and (name:find("bullet") or name:find("shot") or name:find("guitar") or name:find("soul")) then
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then obj.Enabled = false end
     end
 end
 
--- Toggles
-Section:NewToggle("Disable Dragon VFX", "Stops Dragon Lag", function(state) _G.Settings.NoDragon = state end)
-Section:NewToggle("Disable Kitsune VFX", "Stops Kitsune Lag", function(state) _G.Settings.NoKitsune = state end)
-Section:NewToggle("Disable Control VFX", "Stops Control Lag", function(state) _G.Settings.NoControl = state end)
-Section:NewToggle("Disable All Gun VFX", "Stops Soul Guitar/Gun Lag", function(state) _G.Settings.NoGuns = state end)
+-- UI TABS
+local Tab = Window:NewTab("VFX Removers")
+local Section = Tab:NewSection("Targeted Fruits & Guns")
 
--- Listener: This is the 'Brain' that watches for new moves
+Section:NewToggle("Disable Dragon VFX", "No Dragon Lag", function(state) _G.Settings.NoDragon = state end)
+Section:NewToggle("Disable Kitsune VFX", "No Kitsune Lag", function(state) _G.Settings.NoKitsune = state end)
+Section:NewToggle("Disable Control VFX", "No Control Lag", function(state) _G.Settings.NoControl = state end)
+Section:NewToggle("Disable ALL 14 Guns", "Soul Guitar, Acidum, etc.", function(state) _G.Settings.NoGuns = state end)
+
+-- LISTENER
 game.Workspace.DescendantAdded:Connect(function(obj)
-    task.wait(0.1) -- Wait for name to load
-    handleVFX(obj)
+    task.wait(0.1)
+    cleanVFX(obj)
 end)
 
--- Global Performance (Lighting only, no texture deleting!)
-local LightTab = Window:NewTab("Lighting")
-local LightSec = LightTab:NewSection("Boost FPS (Keeps Visuals)")
-
-LightSec:NewButton("Disable Shadows", "Removes shadows but keeps textures", function()
-    game:GetService("Lighting").GlobalShadows = false
-end)
-
-LightSec:NewButton("Full Bright", "Makes everything clear", function()
-    game:GetService("Lighting").Brightness = 2
-    game:GetService("Lighting").ClockTime = 12
-end)
-
-print("LagByeBye v3 Loaded! No more ugly UI.")
+print("LagByeBye v4 Loaded! Use 'RightControl' or the LBB button to minimize.")
