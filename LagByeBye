@@ -1,0 +1,30 @@
+-- Essential Service
+local workspace = game:GetService("Workspace")
+
+-- Function to 'Wipe' an object
+local function removeVisuals(obj)
+    -- Remove Particle Emitters (The 'flashy' stuff)
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+        obj.Enabled = false -- Disabling is better than deleting to prevent script errors
+    
+    -- Simplify Meshes (Dragon/Control bodies)
+    elseif obj:IsA("MeshPart") or obj:IsA("SpecialMesh") then
+        obj.MeshId = "" -- This makes the mesh invisible/flat
+        
+    -- Remove Textures on Parts (Gun skins/Fruit textures)
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        obj:Destroy()
+    end
+end
+
+-- Run the wipe on everything currently in the game
+for _, v in pairs(workspace:GetDescendants()) do
+    removeVisuals(v)
+end
+
+-- Watch for NEW things spawning (like someone using a move)
+workspace.DescendantAdded:Connect(function(newObj)
+    removeVisuals(newObj)
+end)
+
+print("Visuals Wiped: Dragon, Control, and Effects are now invisible.")
