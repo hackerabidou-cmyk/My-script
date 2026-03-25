@@ -1,47 +1,69 @@
--- [[ LagByeBye: The Nuclear Performance Option ]] --
-print("LagByeBye: Initiating 60 FPS Mode...")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("LagByeBye: PvP Optimizer", "Midnight")
 
-local function optimize(obj)
-    -- 1. Remove Heavy Particles (The 'Dragon/Control' lag)
-    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") then
-        obj.Enabled = false
-        
-    -- 2. Delete Textures/Decals (Boosts GPU significantly)
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj:Destroy()
-        
-    -- 3. Target Mesh Detail (Dragon Scales, Control Domain Walls)
-    elseif obj:IsA("MeshPart") or obj:IsA("SpecialMesh") then
-        obj.RenderFidelity = Enum.RenderFidelity.Performance
-        -- Option: obj.MeshId = "" -- Uncomment this if you want Dragon to be invisible cubes
-        
-    -- 4. Simplify Materials (Plastic is fastest to render)
-    elseif obj:IsA("BasePart") then
-        obj.Material = Enum.Material.Plastic
-        obj.Reflectance = 0
-        obj.CastShadow = false
+-- Tabs
+local Tab = Window:NewTab("Fruit & Gun VFX")
+local Section = Tab:NewSection("Targeted Visual Removers")
+
+-- Optimization Function
+local function toggleVFX(nameKeywords, state)
+    for _, v in pairs(game.Workspace:GetDescendants()) do
+        -- Search for things named 'Dragon', 'Kitsune', etc.
+        for _, keyword in pairs(nameKeywords) do
+            if v.Name:find(keyword) or v.Parent.Name:find(keyword) then
+                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
+                    v.Enabled = not state -- If 'state' is true, we DISABLE (enabled = false)
+                end
+            end
+        end
     end
 end
 
--- Wipe existing lag
-for _, v in pairs(workspace:GetDescendants()) do
-    optimize(v)
-end
-
--- Wipe NEW lag as moves are used
-workspace.DescendantAdded:Connect(function(newObj)
-    task.wait() -- Small delay to ensure the object is fully in the game
-    optimize(newObj)
+-- 1. Dragon Fruit Toggle
+Section:NewToggle("Disable Dragon VFX", "Kills Dragon Breath and Transformations", function(state)
+    _G.NoDragon = state
+    toggleVFX({"Dragon", "FireBreath", "Transform"}, state)
 end)
 
--- Global Lighting Fix
-local lighting = game:GetService("Lighting")
-lighting.GlobalShadows = false
-lighting.FogEnd = 9e9
-for _, effect in pairs(lighting:GetChildren()) do
-    if effect:IsA("PostProcessEffect") then
-        effect.Enabled = false
-    end
-end
+-- 2. Kitsune Fruit Toggle
+Section:NewToggle("Disable Kitsune VFX", "Kills Fox Fire and Blue Tails", function(state)
+    _G.NoKitsune = state
+    toggleVFX({"Kitsune", "Fox", "BlueFire", "Tail"}, state)
+end)
 
-print("60 FPS Optimization Active.")
+-- 3. Control Fruit Toggle
+Section:NewToggle("Disable Control VFX", "Kills the 'Room' and Levitation effects", function(state)
+    _G.NoControl = state
+    toggleVFX({"Control", "Room", "Area", "Gamma"}, state)
+end)
+
+-- 4. Gun VFX Toggle
+Section:NewToggle("Disable All Gun VFX", "Kills Soul Guitar, Kabucha, and Rifle shots", function(state)
+    _G.NoGuns = state
+    toggleVFX({"Bullet", "Shot", "Guitar", "Soul", "Beam", "Blast"}, state)
+end)
+
+-- AUTO-KILLER (Detects new moves while you play)
+game.Workspace.DescendantAdded:Connect(function(obj)
+    task.wait(0.1)
+    if _G.NoDragon and (obj.Name:find("Dragon") or obj.Parent.Name:find("Dragon")) then
+        if obj:IsA("ParticleEmitter") then obj.Enabled = false end
+    end
+    -- Repeat for others...
+    if _G.NoKitsune and obj.Name:find("Kitsune") then
+        if obj:IsA("ParticleEmitter") then obj.Enabled = false end
+    end
+end)
+
+local Misc = Window:NewTab("Misc")
+local MiscSection = Misc:NewSection("Global Boosts")
+
+MiscSection:NewButton("Ultra Fast Mode (SmoothPlastic)", "Changes materials to be super fast", function()
+    for _, v in pairs(game.Workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Material = Enum.Material.SmoothPlastic
+        end
+    end
+end)
+
+print("LagByeBye Menu Loaded!")
