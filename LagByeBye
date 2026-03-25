@@ -1,39 +1,47 @@
--- [[ LagByeBye: Blox Fruits Visual Optimizer ]] --
--- Targets: Dragon, Control, Gun Effects, and Textures
-print("LagByeBye Loaded Successfully!")
+-- [[ LagByeBye: The Nuclear Performance Option ]] --
+print("LagByeBye: Initiating 60 FPS Mode...")
 
--- Your optimization code starts here:
-local lighting = game:GetService("Lighting")
-lighting.GlobalShadows = false
--- (The rest of your code...)
-
--- Essential Service
-local workspace = game:GetService("Workspace")
-
--- Function to 'Wipe' an object
-local function removeVisuals(obj)
-    -- Remove Particle Emitters (The 'flashy' stuff)
-    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-        obj.Enabled = false -- Disabling is better than deleting to prevent script errors
-    
-    -- Simplify Meshes (Dragon/Control bodies)
-    elseif obj:IsA("MeshPart") or obj:IsA("SpecialMesh") then
-        obj.MeshId = "" -- This makes the mesh invisible/flat
+local function optimize(obj)
+    -- 1. Remove Heavy Particles (The 'Dragon/Control' lag)
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") then
+        obj.Enabled = false
         
-    -- Remove Textures on Parts (Gun skins/Fruit textures)
+    -- 2. Delete Textures/Decals (Boosts GPU significantly)
     elseif obj:IsA("Decal") or obj:IsA("Texture") then
         obj:Destroy()
+        
+    -- 3. Target Mesh Detail (Dragon Scales, Control Domain Walls)
+    elseif obj:IsA("MeshPart") or obj:IsA("SpecialMesh") then
+        obj.RenderFidelity = Enum.RenderFidelity.Performance
+        -- Option: obj.MeshId = "" -- Uncomment this if you want Dragon to be invisible cubes
+        
+    -- 4. Simplify Materials (Plastic is fastest to render)
+    elseif obj:IsA("BasePart") then
+        obj.Material = Enum.Material.Plastic
+        obj.Reflectance = 0
+        obj.CastShadow = false
     end
 end
 
--- Run the wipe on everything currently in the game
+-- Wipe existing lag
 for _, v in pairs(workspace:GetDescendants()) do
-    removeVisuals(v)
+    optimize(v)
 end
 
--- Watch for NEW things spawning (like someone using a move)
+-- Wipe NEW lag as moves are used
 workspace.DescendantAdded:Connect(function(newObj)
-    removeVisuals(newObj)
+    task.wait() -- Small delay to ensure the object is fully in the game
+    optimize(newObj)
 end)
 
-print("Visuals Wiped: Dragon, Control, and Effects are now invisible.")
+-- Global Lighting Fix
+local lighting = game:GetService("Lighting")
+lighting.GlobalShadows = false
+lighting.FogEnd = 9e9
+for _, effect in pairs(lighting:GetChildren()) do
+    if effect:IsA("PostProcessEffect") then
+        effect.Enabled = false
+    end
+end
+
+print("60 FPS Optimization Active.")
